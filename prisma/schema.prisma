@@ -1,0 +1,72 @@
+// あぽいんと！ のデータベース定義
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 回答の種類: ○ / △ / ×
+enum Status {
+  OK
+  MAYBE
+  NG
+}
+
+// 日程調整イベント
+model Event {
+  id             String      @id @db.VarChar(12)
+  title          String      @db.VarChar(100)
+  description    String      @default("") @db.VarChar(500)
+  ownerTokenHash String      @db.VarChar(64) // 管理用キーのハッシュ（キー本体は保存しない）
+  closed         Boolean     @default(false)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(6)
+  expiresAt      DateTime    @db.Timestamptz(6) // この日時を過ぎると自動削除
+  candidates     Candidate[]
+  answers        Answer[]
+
+  @@index([expiresAt])
+}
+
+// 候補日
+model Candidate {
+  id        Int        @id @default(autoincrement())
+  eventId   String     @db.VarChar(12)
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date      DateTime   @db.Date
+  note      String     @default("") @db.VarChar(60) // 「19:00〜」など時間のメモ
+  position  Int
+  responses Response[]
+
+  @@index([eventId])
+}
+
+// 参加者の回答（1ブラウザにつき1イベント1件）
+model Answer {
+  id          Int        @id @default(autoincrement())
+  eventId     String     @db.VarChar(12)
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  visitorHash String     @db.VarChar(64) // 回答したブラウザの識別子のハッシュ
+  name        String     @db.VarChar(40)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(6)
+  responses   Response[]
+
+  @@unique([eventId, visitorHash])
+}
+
+// 候補日ごとの回答（○△×と一言メモ）
+model Response {
+  id          Int       @id @default(autoincrement())
+  answerId    Int
+  answer      Answer    @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  candidateId Int
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status      Status
+  note        String    @default("") @db.VarChar(60)
+
+  @@unique([answerId, candidateId])
+  @@index([candidateId])
+}

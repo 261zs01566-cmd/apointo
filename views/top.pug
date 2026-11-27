@@ -1,0 +1,46 @@
+extends layout
+
+block content
+  if errors.length
+    div.alert.alert-danger(role="alert")
+      strong 入力内容を確認してください
+      ul.mb-0.mt-1
+        each message in errors
+          li= message
+
+  form.card.apo-card.mb-4(method="post" action="/events" data-once novalidate)
+    div.card-body.p-4
+      h2.h5.mb-3
+        i.bi-plus-circle-fill.me-2
+        | 新しいイベントを作る
+      input(type="hidden" name="csrf" value=csrf)
+      div.mb-3
+        label.form-label.fw-bold(for="title") イベント名
+        input#title.form-control(type="text" name="title" maxlength=limits.titleMax required placeholder="例: 新年会、勉強会の日程" value=form.title)
+      div.mb-3
+        label.form-label.fw-bold(for="description")
+          | 説明
+          span.text-muted.fw-normal.small.ms-1 （任意）
+        textarea#description.form-control(name="description" rows="2" maxlength=limits.descriptionMax placeholder="場所や持ち物など、伝えたいことがあれば")= form.description
+      div.mb-2.fw-bold 候補日
+      p.small.text-muted.mb-2 日付と、必要なら時間のメモ（例: 19:00〜）を入力します。最大#{limits.candidatesMax}件まで。
+      div#candidate-rows(data-max=limits.candidatesMax)
+        each row in form.rows
+          div.candidate-row.input-group.mb-2
+            input.form-control.apo-date-input(type="date" name="date" min=today value=row.date aria-label="候補日")
+            input.form-control(type="text" name="note" maxlength=limits.noteMax placeholder="時間のメモ（例: 19:00〜）" value=row.note aria-label="時間のメモ")
+            button.btn.btn-outline-secondary.js-remove-row(type="button" aria-label="この候補を削除")
+              i.bi-x-lg
+      button#add-candidate.btn.btn-outline-primary.btn-sm.mb-4(type="button")
+        i.bi-plus-lg.me-1
+        | 候補日を追加
+      template#candidate-template
+        div.candidate-row.input-group.mb-2
+          input.form-control.apo-date-input(type="date" name="date" min=today aria-label="候補日")
+          input.form-control(type="text" name="note" maxlength=limits.noteMax placeholder="時間のメモ（例: 19:00〜）" aria-label="時間のメモ")
+          button.btn.btn-outline-secondary.js-remove-row(type="button" aria-label="この候補を削除")
+            i.bi-x-lg
+      div.d-grid
+        button.btn.btn-primary.btn-lg(type="submit")
+          i.bi-link-45deg.me-1
+          | イベントを作って、URLを発行する

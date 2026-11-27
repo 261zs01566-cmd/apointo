@@ -1,0 +1,25 @@
+doctype html
+html(lang="ja" data-bs-theme=theme)
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    meta(name="robots" content="noindex, nofollow")
+    title= pageTitle ? pageTitle + ' - ' + appName : appName
+    link(rel="icon" href="/favicon.svg" type="image/svg+xml")
+    link(rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css")
+    link(rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css")
+    link(rel="stylesheet" href="/style.css")
+  body
+    - const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    nav.navbar.apo-navbar
+      div.container
+        a.navbar-brand.apo-brand(href="/")
+          i.bi-calendar2-check-fill.me-2
+          | #{appName}
+        a.btn.btn-sm.btn-outline-light(href=`/theme?to=${nextTheme}&next=${encodeURIComponent(currentPath)}` title="表示モードを切り替え")
+          i(class=theme === 'dark' ? 'bi-sun-fill' : 'bi-moon-stars-fill')
+          span.ms-1= theme === 'dark' ? 'ライト' : 'ダーク'
+    main.container.apo-main
+      block content
+    script(src="/vendor/bootstrap/js/bootstrap.bundle.min.js")
+    script(src="/app.js")

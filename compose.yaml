@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    ports:
+      - 8000:8000
+    environment:
+      # ローカル開発専用の値です（本番ではRenderの環境変数を使います）
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/apointo
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:16.1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: apointo
+      TZ: "Asia/Tokyo"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d apointo"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  node_modules:
+  pgdata:

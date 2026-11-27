@@ -1,0 +1,161 @@
+extends layout
+
+block content
+  - const marks = { OK: '○', MAYBE: '△', NG: '×' }
+  - const meanings = { OK: '参加できる', MAYBE: '未定', NG: '参加できない' }
+  - const choices = [{ v: 'OK', m: '○', t: '参加できる' }, { v: 'MAYBE', m: '△', t: '未定' }, { v: 'NG', m: '×', t: '参加できない' }]
+
+  if errors.length
+    div.alert.alert-danger(role="alert")
+      strong 入力内容を確認してください
+      ul.mb-0.mt-1
+        each message in errors
+          li= message
+
+  section.card.apo-card.mb-4
+    div.card-body.p-4
+      div.d-flex.flex-wrap.gap-2.align-items-center.mb-2
+        if ev.closed
+          span.badge.text-bg-secondary 受付終了
+        else
+          span.badge.text-bg-primary 回答受付中
+        span.badge.apo-badge-soft あと#{ev.daysLeft}日で自動削除
+      h1.h3.apo-event-title= ev.title
+      if ev.description
+        p.apo-pre.mb-3= ev.description
+      label.form-label.small.text-muted(for="share-url") 共有URL（回答してほしい人に送ってください）
+      div.input-group
+        input#share-url.form-control(type="text" readonly value=ev.shareUrl)
+        button.btn.btn-primary(type="button" data-copy-target="#share-url")
+          i.bi-clipboard.me-1
+          span.copy-label コピー
+
+  if ev.best.length
+    div.alert.apo-best(role="status")
+      i.bi-stars.me-2
+      strong いま一番集まりやすい日
+      div.mt-1
+        each col in ev.best
+          span.apo-best-chip
+            = col.label
+            if col.note
+              |  #{col.note}
+            |  ／ ○#{col.counts.ok}人 △#{col.counts.maybe}人
+
+  section#results.card.apo-card.mb-4
+    div.card-body.p-3.p-md-4
+      div.d-flex.flex-wrap.justify-content-between.align-items-center.gap-2.mb-3
+        h2.h5.mb-0
+          i.bi-table.me-2
+          | みんなの回答
+          span.text-muted.small.ms-2 #{ev.rows.length}人
+        if ev.hasNotes
+          div.form-check.form-switch.mb-0.d-none.d-sm-block
+            input#toggle-notes.form-check-input(type="checkbox" role="switch")
+            label.form-check-label(for="toggle-notes") 一言メモを表に表示
+      if ev.rows.length === 0
+        p.text-muted.mb-0 まだ回答がありません。最初の回答者になりましょう。
+      else
+        div.apo-table-wrap
+          table#result-table.table.apo-table.align-middle.mb-0
+            thead
+              tr
+                th.apo-name-col(scope="col") 名前
+                each col in ev.columns
+                  th.text-center(scope="col" class={ 'is-best': col.isBest })
+                    div.apo-date= col.label
+                    if col.note
+                      div.apo-time= col.note
+                    if col.isBest
+                      span.badge.apo-badge-best おすすめ
+            tbody
+              each row in ev.rows
+                tr(class={ 'is-mine': row.isMine })
+                  th.apo-name-col(scope="row")
+                    span.apo-name= row.name
+                    if row.isMine
+                      span.badge.apo-badge-soft.ms-1 あなた
+                    if ev.isOwner
+                      form.d-inline.ms-1(method="post" action=`/e/${ev.id}/answers/${row.id}/delete` data-confirm=`「${row.name}」さんの回答を削除しますか？`)
+                        input(type="hidden" name="csrf" value=csrf)
+                        button.btn.btn-link.btn-sm.p-0.text-danger(type="submit" title="この回答を削除" aria-label="この回答を削除")
+                          i.bi-trash
+                  each cell, idx in row.cells
+                    td.text-center.apo-cell(class=`st-${(cell.status || 'none').toLowerCase()}` + (ev.columns[idx].isBest ? ' is-best' : ''))
+                      span.apo-mark(aria-label=cell.status ? meanings[cell.status] : '未回答')= cell.status ? marks[cell.status] : '－'
+                      if cell.note
+                        button.apo-note-btn(type="button" data-bs-toggle="tooltip" data-bs-trigger="hover focus" title=cell.note aria-label=`メモ: ${cell.note}`)
+                          i.bi-chat-left-text-fill
+                        div.apo-cell-note= cell.note
+            tfoot
+              tr
+                th.apo-name-col(scope="row") 集計
+                each col in ev.columns
+                  td.text-center.apo-count(class={ 'is-best': col.isBest })
+                    span.apo-c-ok ○#{col.counts.ok}
+                    span.apo-c-maybe  △#{col.counts.maybe}
+                    span.apo-c-ng  ×#{col.counts.ng}
+        if ev.hasNotes
+          div.d-sm-none.mt-3
+            h3.h6 一言メモ
+            ul.list-unstyled.small.mb-0
+              each n in ev.notesList
+                li.mb-1
+                  strong #{n.name}
+                  |  ／ #{n.label} #{marks[n.status] || ''}：#{n.note}
+
+  section#answer.card.apo-card.mb-4
+    div.card-body.p-4
+      h2.h5.mb-3
+        i.bi-pencil-square.me-2
+        = ev.ownAnswer ? 'あなたの回答を修正する' : '回答する'
+      if ev.closed
+        div.alert.alert-secondary.mb-0 このイベントは受付を終了しました。
+      else
+        form(method="post" action=`/e/${ev.id}/answers` data-once novalidate)
+          input(type="hidden" name="csrf" value=csrf)
+          div.mb-3
+            label.form-label.fw-bold(for="name") お名前
+            input#name.form-control(type="text" name="name" maxlength=limits.nameMax required placeholder="例: たろう" value=form.name)
+          div.list-group.mb-3
+            each col in ev.columns
+              div.list-group-item.apo-answer-row
+                div.apo-answer-date
+                  span.fw-bold= col.label
+                  if col.note
+                    span.text-muted.ms-2.small= col.note
+                div.btn-group.apo-choice(role="group" aria-label=`${col.label}の回答`)
+                  each opt in choices
+                    input.btn-check(type="radio" name=`s_${col.id}` id=`s_${col.id}_${opt.v}` value=opt.v checked=(form.statuses[col.id] === opt.v) required)
+                    label.btn.apo-choice-label(class=`ch-${opt.v.toLowerCase()}` for=`s_${col.id}_${opt.v}` title=opt.t)= opt.m
+                input.form-control.form-control-sm.apo-note-input(type="text" name=`n_${col.id}` maxlength=limits.noteMax placeholder="一言メモ（例: 20時以降なら）" value=form.notes[col.id] aria-label=`${col.label}の一言メモ`)
+          div.d-grid
+            button.btn.btn-primary.btn-lg(type="submit")
+              i.bi-send-fill.me-1
+              = ev.ownAnswer ? '回答を更新する' : '回答を送信する'
+
+  if ev.isOwner
+    section.card.apo-card.apo-owner.mb-4
+      div.card-body.p-4
+        h2.h5.mb-2
+          i.bi-key-fill.me-2
+          | 主催者メニュー
+        p.small.text-muted 管理用URLを保存しておくと、別の端末やブラウザからでも締切・削除ができます。他の人には教えないでください。
+        label.form-label.small.text-muted(for="manage-url") 管理用URL
+        div.input-group.mb-3
+          input#manage-url.form-control(type="text" readonly value=ev.manageUrl)
+          button.btn.btn-outline-primary(type="button" data-copy-target="#manage-url")
+            i.bi-clipboard.me-1
+            span.copy-label コピー
+        div.d-flex.gap-2.flex-wrap
+          form(method="post" action=`/e/${ev.id}/close`)
+            input(type="hidden" name="csrf" value=csrf)
+            input(type="hidden" name="closed" value=(ev.closed ? '0' : '1'))
+            button.btn.btn-outline-secondary(type="submit")
+              i(class=ev.closed ? 'bi-unlock-fill' : 'bi-lock-fill')
+              span.ms-1= ev.closed ? '受付を再開する' : '受付を終了する'
+          form(method="post" action=`/e/${ev.id}/delete` data-confirm="このイベントと、すべての回答を削除します。元に戻せません。よろしいですか？")
+            input(type="hidden" name="csrf" value=csrf)
+            button.btn.btn-outline-danger(type="submit")
+              i.bi-trash-fill.me-1
+              | イベントを削除する

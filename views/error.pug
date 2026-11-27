@@ -1,0 +1,10 @@
+extends layout
+
+block content
+  section.text-center.py-5
+    div.apo-error-code= status
+    h1.h4.mb-3= title
+    p.text-muted.mb-4= message
+    a.btn.btn-primary(href="/")
+      i.bi-house-door-fill.me-1
+      | トップへ戻る
